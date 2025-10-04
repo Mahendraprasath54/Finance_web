@@ -1,0 +1,638 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Edit, User as UserIcon, Phone, MapPin, Eye } from 'lucide-react';
+import { User, Address } from '../types';
+import { userApi } from '../utils/api';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+interface UserFormData extends Omit<User, 'id' | 'createdAt' | 'updatedAt'> {}
+
+const defaultFormData: UserFormData = {
+  name: '',
+  mobileNumber: '',
+  employeeId: '',
+  status: 'active',
+  schemes: [],
+  permanentAddress: {
+    doorNumber: '',
+    street: '',
+    area: '',
+    localAddress: '',
+    city: '',
+    district: '',
+    state: '',
+    pinCode: ''
+  },
+  temporaryAddress: {
+    doorNumber: '',
+    street: '',
+    area: '',
+    localAddress: '',
+    city: '',
+    district: '',
+    state: '',
+    pinCode: ''
+  }
+};
+
+const UserManagement: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<UserFormData>(defaultFormData);
+  const [pagination, setPagination] = useState({
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await userApi.getUsers({
+        page: pagination.page,
+        limit: pagination.limit,
+        status: filterStatus === 'all' ? undefined : filterStatus,
+        search: searchQuery || undefined
+      });
+    permanentAddress: {
+      doorNumber: '',
+      street: '',
+      area: '',
+      localAddress: '',
+      city: '',
+      district: '',
+      state: '',
+      pinCode: ''
+    },
+    temporaryAddress: {
+      doorNumber: '',
+      street: '',
+      area: '',
+      localAddress: '',
+      city: '',
+      district: '',
+      state: '',
+      pinCode: ''
+    }
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      if (selectedUser) {
+        await userApi.updateUser(selectedUser.id, formData);
+        toast.success('User updated successfully');
+      } else {
+        await userApi.createUser(formData);
+        toast.success('User created successfully');
+      }
+      setShowAddForm(false);
+      setSelectedUser(null);
+      setFormData(initialFormData);
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error saving user:', error);
+      toast.error('Failed to save user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData(initialFormData);
+    setSelectedUser(null);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const displayedUsers = users.filter(user => {
+    if (filterStatus === 'all') return true;
+    return user.status === filterStatus;
+  }).filter(user => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      user.mobileNumber.toLowerCase().includes(query) ||
+      (user.employeeId && user.employeeId.toLowerCase().includes(query)) ||
+      user.name.toLowerCase().includes(query)
+    );
+  });
+  };
+
+  const fetchUsersAsync = async () => {
+    try {
+      const response = await userApi.getUsers(params);
+      setUsers(response.data);
+      setPagination(prev => ({
+        ...prev,
+        total: response.pagination.total,
+        pages: response.pagination.pages
+      }));
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsersAsync();
+  }, [pagination.page, pagination.limit, filterStatus, searchQuery]);
+
+  const handleAddUser = async () => {
+    try {
+      setIsLoading(true);
+      // Ensure required fields are present
+      if (!formData.name || !formData.mobileNumber || !formData.permanentAddress) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      const userData = {
+        name: formData.name,
+        mobileNumber: formData.mobileNumber,
+        employeeId: formData.employeeId || '',
+        status: 'active' as const,
+        permanentAddress: formData.permanentAddress,
+        temporaryAddress: formData.temporaryAddress,
+        schemes: []
+      };
+
+      const newUser = await userApi.createUser(userData);
+      
+      setUsers(prev => [newUser, ...prev]);
+      setShowAddForm(false);
+      resetForm();
+      
+      // Use dynamic import for toast to avoid SSR issues
+      const { toast } = await import('react-toastify');
+      toast.success('User added successfully');
+    } catch (error: any) {
+      console.error('Failed to add user:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to add user';
+      const { toast } = await import('react-toastify');
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddressChange = (
+    type: 'permanentAddress' | 'temporaryAddress',
+    field: keyof Address,
+    value: string
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [type]: {
+        ...prev[type],
+        [field]: value
+      }
+    }));
+  };
+
+  // Handle search form submission
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    fetchUsers();
+  };
+
+  // Handle filter status change
+  const handleFilterStatusChange = (status: 'all' | 'active' | 'inactive') => {
+    setFilterStatus(status);
+    setPagination(prev => ({
+      ...prev,
+      page: 1 // Reset to first page when filter changes
+    }));
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({
+      ...prev,
+      page: newPage
+    }));
+  };
+
+  // Filter component
+  const Filter = () => (
+    <div className="flex items-center space-x-2">
+      <span className="text-sm font-medium text-gray-700">Status:</span>
+      <select
+        value={filterStatus}
+        onChange={(e) => handleFilterStatusChange(e.target.value as 'all' | 'active' | 'inactive')}
+        className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+      >
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </div>
+  );
+
+  const AddressForm: React.FC<{
+    title: string;
+    address: Partial<Address>;
+    onChange: (field: keyof Address, value: string) => void;
+  }> = ({ title, address, onChange }) => (
+    <div className="space-y-4">
+      <h4 className="font-medium text-gray-900 border-b pb-2">{title}</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Street</label>
+          <input
+            type="text"
+            value={address.street || ''}
+            onChange={(e) => { if (composingRef.current) return; onChange('street', e.target.value); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => { composingRef.current = false; onChange('street', (e.target as HTMLInputElement).value); }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+          <input
+            type="text"
+            value={address.area || ''}
+            onChange={(e) => { if (composingRef.current) return; onChange('area', e.target.value); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => { composingRef.current = false; onChange('area', (e.target as HTMLInputElement).value); }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Local Address</label>
+          <input
+            type="text"
+            value={address.localAddress || ''}
+            onChange={(e) => { if (composingRef.current) return; onChange('localAddress', e.target.value); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => { composingRef.current = false; onChange('localAddress', (e.target as HTMLInputElement).value); }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+          <input
+            type="text"
+            value={address.city || ''}
+            onChange={(e) => { if (composingRef.current) return; onChange('city', e.target.value); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => { composingRef.current = false; onChange('city', (e.target as HTMLInputElement).value); }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+          <input
+            type="text"
+            value={address.district || ''}
+            onChange={(e) => { if (composingRef.current) return; onChange('district', e.target.value); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => { composingRef.current = false; onChange('district', (e.target as HTMLInputElement).value); }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+          <input
+            type="text"
+            value={address.state || ''}
+            onChange={(e) => { if (composingRef.current) return; onChange('state', e.target.value); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => { composingRef.current = false; onChange('state', (e.target as HTMLInputElement).value); }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Pin Code</label>
+          <input
+            type="text"
+            value={address.pinCode || ''}
+            onChange={(e) => { if (composingRef.current) return; onChange('pinCode', e.target.value); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={(e) => { composingRef.current = false; onChange('pinCode', (e.target as HTMLInputElement).value); }}
+            pattern="^\d{6}$"
+            title="Enter a 6-digit pincode"
+            maxLength={6}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const UserManagement: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<UserFormData>(defaultFormData);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1
+  });
+
+  // Initialize the component
+  useEffect(() => {
+    fetchUsers();
+  }, [pagination.page, pagination.limit, filterStatus, searchQuery]);
+
+  // Fetch users from API
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await userApi.getUsers({
+        page: pagination.page,
+        limit: pagination.limit,
+        status: filterStatus === 'all' ? undefined : filterStatus,
+        search: searchQuery || undefined
+      });
+      setUsers(response.data);
+      setPagination(prev => ({
+        ...prev,
+        total: response.pagination.total,
+        pages: response.pagination.pages
+      }));
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset form to default values
+  const resetForm = () => {
+    setFormData(defaultFormData);
+    setSelectedUser(null);
+  };
+
+  return (
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
+        <p className="text-gray-600">Manage customer and employee information</p>
+      </div>
+
+      {/* Actions Bar */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex-1 flex items-center space-x-4">
+          <div className="relative flex-1 max-w-md">
+            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Filter size={16} className="text-gray-400" />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <Button onClick={() => setShowAddForm(true)}>
+          <Plus size={20} className="mr-2" />
+          Add User
+        </Button>
+      </div>
+
+      {/* Users Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {displayedUsers.map(user => (
+          <Card key={user.id} className="hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center">
+                  <UserIcon size={20} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">{user.name}</h3>
+                  <p className="text-sm text-gray-500">ID: {user.employeeId || 'N/A'}</p>
+                </div>
+              </div>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                user.status === 'active' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {user.status}
+              </span>
+            </div>
+            
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center text-sm text-gray-600">
+                <Phone size={16} className="mr-2" />
+                {user.mobileNumber}
+              </div>
+              <div className="flex items-center text-sm text-gray-600">
+                <MapPin size={16} className="mr-2" />
+                {user.permanentAddress.city}, {user.permanentAddress.state}
+              </div>
+            </div>
+            
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setSelectedUser(user)}
+                className="flex-1 flex items-center justify-center px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <Eye size={16} className="mr-1" />
+                View
+              </button>
+              <button className="flex-1 flex items-center justify-center px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <Edit size={16} className="mr-1" />
+                Edit
+              </button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Add User Modal */}
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <h2 className="text-xl font-semibold text-gray-900">Add New User</h2>
+            </div>
+            
+            <div className="p-6">
+              <form onSubmit={(e) => { e.preventDefault(); handleAddUser(); }} className="space-y-6">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.mobileNumber || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, mobileNumber: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+                    <input
+                      type="text"
+                      value={formData.employeeId || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, employeeId: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={formData.status || 'active'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Permanent Address */}
+                <AddressForm
+                  title="Permanent Address"
+                  address={formData.permanentAddress || {}}
+                  onChange={(field, value) => handleAddressChange('permanentAddress', field, value)}
+                />
+
+                {/* Temporary Address */}
+                <AddressForm
+                  title="Temporary Address (Optional)"
+                  address={formData.temporaryAddress || {}}
+                  onChange={(field, value) => handleAddressChange('temporaryAddress', field, value)}
+                />
+
+                {/* Action Buttons */}
+                <div className="flex space-x-4 pt-4 border-t border-gray-200">
+                  <Button type="submit" className="flex-1">
+                    Add User
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={resetForm}
+                    className="flex-1"
+                  >
+                    Clear All
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowAddForm(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <h2 className="text-xl font-semibold text-gray-900">User Details</h2>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center">
+                    <UserIcon size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">{selectedUser.name}</h3>
+                    <p className="text-gray-600">{selectedUser.mobileNumber}</p>
+                    <p className="text-sm text-gray-500">
+                      Member since {new Date(selectedUser.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Permanent Address</h4>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-600">
+                        {selectedUser.permanentAddress.doorNumber}, {selectedUser.permanentAddress.street},<br />
+                        {selectedUser.permanentAddress.area}, {selectedUser.permanentAddress.localAddress}<br />
+                        {selectedUser.permanentAddress.city}, {selectedUser.permanentAddress.district}<br />
+                        {selectedUser.permanentAddress.state} - {selectedUser.permanentAddress.pinCode}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedUser.temporaryAddress && (
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-3">Temporary Address</h4>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-600">
+                          {selectedUser.temporaryAddress.doorNumber}, {selectedUser.temporaryAddress.street},<br />
+                          {selectedUser.temporaryAddress.area}, {selectedUser.temporaryAddress.localAddress}<br />
+                          {selectedUser.temporaryAddress.city}, {selectedUser.temporaryAddress.district}<br />
+                          {selectedUser.temporaryAddress.state} - {selectedUser.temporaryAddress.pinCode}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex space-x-4 pt-4 border-t border-gray-200">
+                  <Button variant="outline" onClick={() => setSelectedUser(null)} className="flex-1">
+                    Close
+                  </Button>
+                  <Button className="flex-1">
+                    <Edit size={16} className="mr-2" />
+                    Edit User
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default UserManagement;
